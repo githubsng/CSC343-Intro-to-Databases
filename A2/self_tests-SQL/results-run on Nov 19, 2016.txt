@@ -1,0 +1,100 @@
+q4 + data4 - All good
+ Expected Columns:
+  ['percentage']
+ Actual Columns:
+  ['percentage']
+ Expected Rows:
+  (67,)
+ Actual Rows:
+  (67,)
+
+q6 + data6 - All good
+ Expected Columns:
+  ['travelerid', 'surname', 'numlistings']
+ Actual Columns:
+  ['travelerid', 'surname', 'numlistings']
+ Expected Rows:
+  (1001, 'n2', 2)
+ Actual Rows:
+  (1001, 'n2', 2)
+
+q1 + data1 - All good
+ Expected Columns:
+  ['travelerid', 'email', 'year', 'numrequests', 'numbooking']
+ Actual Columns:
+  ['travelerid', 'email', 'year', 'numrequests', 'numbooking']
+ Expected Rows:
+  (1002, 'fn3@domain.com', None, 0, 0)
+  (1003, 'fn4@domain.com', None, 0, 0)
+  (1000, 'fn1@domain.com', 2015, 2, 1)
+  (1001, 'fn2@domain.com', 2015, 1, 1)
+ Actual Rows:
+  (1002, 'fn3@domain.com', None, 0, 0)
+  (1003, 'fn4@domain.com', None, 0, 0)
+  (1000, 'fn1@domain.com', 2015.0, 2, 1)
+  (1001, 'fn2@domain.com', 2015.0, 1, 1)
+
+q8 + data8 - All good
+ Expected Columns:
+  ['travelerid', 'reciprocals', 'backscratches']
+ Actual Columns:
+  ['travelerid', 'reciprocals', 'backscratches']
+ Expected Rows:
+  (1001, 1, 1)
+  (1000, 0, 0)
+  (1002, 0, 0)
+ Actual Rows:
+  (1001, 1, 1)
+  (1000, 0, 0)
+  (1002, 0, 0)
+
+q5 + data5 - All good
+ Expected Columns:
+  ['homeownerid', 'r5', 'r4', 'r3', 'r2', 'r1']
+ Actual Columns:
+  ['homeownerid', 'r5', 'r4', 'r3', 'r2', 'r1']
+ Expected Rows:
+  (4001, None, None, 1, None, None)
+  (4003, 2, None, None, None, None)
+  (4000, 1, 2, None, None, None)
+ Actual Rows:
+  (4001, None, None, 1, None, None)
+  (4003, 2, None, None, None, None)
+  (4000, 1, 2, None, None, None)
+
+q2 + data2 - All good
+ Expected Columns:
+  ['travelerid', 'name', 'email', 'mostrequestedcity', 'numrequests']
+ Actual Columns:
+  ['travelerid', 'name', 'email', 'mostrequestedcity', 'numrequests']
+ Expected Rows:
+  (1002, 'f3 n3', 'fn3@domain.com', 'c1', 72)
+ Actual Rows:
+  (1002, 'f3 n3', 'fn3@domain.com', 'c1', 72)
+
+q3 + data3 - All good
+ Expected Columns:
+  ['homeowner', 'listingid', 'year', 'city']
+ Actual Columns:
+  ['homeowner', 'listingid', 'year', 'city']
+ Expected Rows:
+  (4000, 3000, 2016, 'c1')
+  (4001, 3001, 2016, 'c2')
+ Actual Rows:
+  (4000, 3000, 2016, 'c1')
+  (4001, 3001, 2016, 'c2')
+
+q7 + data7 - All good
+ Expected Columns:
+  ['travelerid', 'largestbargainpercentage', 'listingid']
+ Actual Columns:
+  ['travelerid', 'largestbargainpercentage', 'listingid']
+ Expected Rows:
+  (1001, 75, 3000)
+  (1001, 75, 3001)
+  (1001, 75, 3002)
+ Actual Rows:
+  (1001, 75, 3000)
+  (1001, 75, 3001)
+  (1001, 75, 3002)
+
