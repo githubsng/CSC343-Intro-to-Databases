@@ -1,0 +1,329 @@
+DROP SCHEMA IF EXISTS closets cascade;
+CREATE SCHEMA closets;
+SET search_path TO closets, public;
+
+
+/***********************************************
+REPORTING STRUCTURE, EMPLOYEES, AND DEPARTMENTS
+************************************************/
+
+-- A table of all ClosetsClosetsClosets employees
+CREATE TABLE Employees (
+	employeeId integer PRIMARY KEY,
+  	firstname varchar(15) NOT NULL,
+  	lastname varchar(25) NOT NULL
+) ;
+
+-- Check constraint of departmental name value in the Departments Table
+CREATE DOMAIN departmentName varchar(25)
+       check (value in ('President', 'Finance', 'Manufacturing', 'Marketing',
+       					'Fabrication', 'Assembly', 'Finishing', 'Materials',
+       					'Rough Mill', 'Finish Mill'));
+
+-- Table of all Departments in the company
+-- Assumption: One manager per dept, --- only 1 employee can now be a manager of a dept (1,1) <--> (1,1)
+CREATE TABLE Departments (
+	departmentId integer PRIMARY KEY,
+	departmentName departmentName NOT NULL UNIQUE,
+	departmentManager integer REFERENCES Employees NOT NULL,
+	UNIQUE (departmentName)
+) ;
+
+-- Table (Relation) of employee departmental assignments and their titles
+-- Assumption: An employee has one title in a dept, but can be assigned to more
+--             than one dept e.g. casual/part-time clerk or assistant in Marketing and Admin Depts
+-- Note: To create a min 1 cardinality from Membership to Departments a trigger is required.
+CREATE TABLE Membership (
+	memberOf integer REFERENCES Departments,
+	employee integer REFERENCES Employees,
+	title varchar(25) NOT NULL,
+	PRIMARY KEY(memberOf, employee)
+) ;
+
+-- Table (Recursive Relation) of the reporting structure/org chart of each employee
+-- Assumption: Given the assumption above, that an employee can work in more
+--             than one dept, they can have more than one supervisor
+CREATE TABLE ReportingStructure (
+	employee integer REFERENCES Employees,
+	reportsTo integer REFERENCES Employees,
+	PRIMARY KEY (employee, reportsTo)
+) ;
+
+-- Constraint added to prevent an 'infinite' recursive relation such that
+-- an employee would not be able to report to themselves e.g. President
+ALTER TABLE ReportingStructure ADD CONSTRAINT CantBeYourOwnManager CHECK (employee <> reportsTo) ;
+
+/***********************************************
+EQUIPMENT AND LUMBER PURCHASES
+************************************************/
+
+-- Table of all purchased lumber and dept it is sent to
+CREATE TABLE PurchasedLumber (
+	stockId integer PRIMARY KEY,
+	species varchar(25) NOT NULL,
+	grade varchar(25) NOT NULL,
+	purchasedDate date NOT NULL,
+	quantity integer NOT NULL,
+	sentTo integer REFERENCES Departments NOT NULL
+) ;
+
+-- Table of company equipment inventory and its dept location
+-- E.g. Type being power saw, planer, gluing machine, etc
+CREATE TABLE Equipment (
+	assetId integer PRIMARY KEY,
+	type varchar(25) NOT NULL,
+	condition varchar(25) NOT NULL,
+	locatedAt integer REFERENCES departments NOT NULL
+) ;
+
+
+/***********************************************
+CUSTOMERS, CREDIT INFORMATION, CUSTOMER ORDERS AND PRODUCTS
+************************************************/
+
+-- Table of all customers and their contact information
+CREATE TABLE Customers (
+	customerId integer PRIMARY KEY,
+	customerFirstName varchar(25) NOT NULL,
+	customerLastName varchar(25) NOT NULL,
+	customerDescription varchar(100),
+	customerCountry varchar(30) NOT NULL,
+	customerCity varchar(25) NOT NULL,
+	customerStreetNo varchar(10) NOT NULL,
+	customerStreet varchar(30) NOT NULL,
+	customerPostalCodeZip varchar(8) NOT NULL,
+	customerPhone varchar(15) NOT NULL,
+	customerEmail varchar(30) NOT NULL
+) ;
+
+-- Table of customer credit information
+-- Assumption: A customer would have one credit limit and negotiated discount
+-- By default Discount and Limit are 0, negotiation may be null, if not done
+CREATE TABLE CustomerCredit (
+	customerId integer PRIMARY KEY REFERENCES Customers NOT NULL,
+	customerDiscount numeric(3,1) default 0 NOT NULL,
+	creditLimit integer default 0 NOT NULL,
+	negotiatedBy integer REFERENCES Employees,
+	negotiatedDate date
+) ;
+
+-- Check constraint of the tracking of order methods in the CustomerOrders Table
+CREATE DOMAIN orderMethod varchar(25)
+       check (value in ('Mail', 'Phone'));
+
+-- Check constraint of order status in the CustomerOrders Table
+CREATE DOMAIN orderStatus varchar(25)
+       check (value in ('Cancelled', 'Hold', 'Approved'));
+
+-- Table of all orders placed by a customer and taken by a given employee
+CREATE TABLE CustomerOrders (
+	orderId integer PRIMARY KEY,
+	customer integer REFERENCES Customers NOT NULL,
+	orderDate date NOT NULL,
+	orderTime time NOT NULL,
+	orderMethod orderMethod NOT NULL,
+	takenBY integer REFERENCES Employees NOT NULL,                 									
+	orderStatus orderStatus NOT NULL default 'Hold'
+) ;
+
+
+-- Table of all product (model) information, unit price, reorder point and quantity on hand
+-- Note: 'Product Number' was renamed as ProductId and set to a varchar instead of an integer
+--        as this would allow inclusion of letter characters. Under Figure 2. Bill of Materials
+--        Product and Part No were described as interchangeable in class and appears to have the value
+--        "M128" not just purely numbers like "139409", "328179", etc.
+CREATE TABLE Products (
+	productId varchar(25) PRIMARY KEY,
+	productName varchar(25) NOT NULL UNIQUE,
+	productDescription varchar(100) NOT NULL,
+	unitPrice integer NOT NULL,
+	reorderPoint integer NOT NULL,
+	quantityonHand integer NOT NULL
+	-- maintainedBy integer REFERENCES Employees NOT NULL
+	-- productLineCode varchar(25) NOT NULL,
+	-- productLineUniqueIdenfier integer NOT NULL,
+	-- UNIQUE(productLineCode, productLineUniqueIdenfier)
+) ;
+
+
+-- Table of productIds and the product lines (code) they belong to
+-- Assumption: no constraint is placed on the product line id for the 10 existing
+--             product lines, as they may be more in the future.
+CREATE TABLE ProductLine (
+	productLineCode varchar(25) NOT NULL,
+	productLineUniqueIdenfier integer NOT NULL,
+	productId varchar(25) REFERENCES Products NOT NULL,
+	PRIMARY KEY(productId),
+	UNIQUE(productLineCode, productLineUniqueIdenfier)
+) ;
+
+/* Alternatively the below table would be sufficient and remove all redundancy as
+the productId belongs to 1 product line and is uniquely idenfied in that product line with
+the same productId 
+CREATE TABLE ProductLine (
+	productId varchar(25) REFERENCES Products NOT NULL,
+	PRIMARY KEY(productId),
+	productLineCode varchar(25) NOT NULL
+) ;
+*/
+
+-- Table of the individual items as part of a customer order
+-- Note: A customer order is allowed to have from 1-12 items
+--       Each item can have up to any number of products x quantity
+--       Unique constraint prevents duplicate productIds being placed
+--       in separate item groupings for any given order
+CREATE TABLE OrderedItems (
+	orderId integer REFERENCES CustomerOrders NOT NULL,
+	itemId integer NOT NULL CHECK (itemId >= 1 AND itemId <= 12),
+	productId varchar(25) NOT NULL REFERENCES Products,
+	quantity integer NOT NULL CHECK (quantity > 0),
+	PRIMARY KEY(orderId, itemId),
+	UNIQUE(orderId, productId)
+) ;
+
+/***********************************************
+CUSTOMER BILLINGS, INVOICES AND PAYMENTS
+************************************************/
+
+-- Table of all billings/customer accounts receivables owed to CCC
+-- an orderId may not necessarily have an invoice (if the order is held or yet to be approved)
+-- hence a (0,1) cardinality
+CREATE TABLE CustomerBillings (
+	invoiceId integer PRIMARY KEY,
+	orderId integer REFERENCES CustomerOrders NOT NULL
+) ;
+
+-- Table of all invoices sent for each individual outstanding billing	
+-- Autoincrements invoiceNumber with each invoiceId
+CREATE TABLE Invoice (
+	invoiceId integer REFERENCES CustomerBillings NOT NULL,
+	invoiceNumber SERIAL NOT NULL,
+	dateIssued date NOT NULL,
+	PRIMARY KEY(invoiceId, invoiceNumber)	
+) ;
+
+-- Table of all customer payments made for each invoice
+CREATE TABLE CustomerPayments (
+	paymentId integer PRIMARY KEY,
+	customer integer REFERENCES Customers NOT NULL,
+	invoiceId integer REFERENCES CustomerBillings NOT NULL,
+	paymentDate date NOT NULL,
+	paidAmount integer NOT NULL CHECK (paidAmount > 0)
+) ;
+/* The check for whether an order status can be approved can be done with a query from
+crossing the tables: CustomerCredit, CustomerOrders, OrderedItems, Products, and Customer Payments
+to determine whether they have exceeded their available credit limit */
+
+/*
+NEED A CHECK CONSTRAINT HERE
+The system verifies new orders before they are filled. If the amount of an order, 
+combined with a customer's outstanding balance exceeds the customer's credit limit, then a notice to this 
+effect is sent to the customer and the new order is not processed until the customer makes sufficient payments.
+*/
+
+
+-- Outstanding payment comes from Total Due - (Total Due * Cusomter Discount) - paidAmount
+-- for each individual invoiceId
+
+/***************************************************************************
+PRODUCTION ORDERS, BILL OF MATERIALS, ROUTING, WORKCENTER, PRODUCTION STATUS
+****************************************************************************/
+
+-- Table listing of all Bill of Materials of each product/part
+-- Assumption: Only products or parts that are composed of subparts would be found in 
+--             this table.
+-- 	           We have also assumed that a productId is found in a single location
+--             as no two identical product/partNos have separate locations in Figure 2.
+--             Else, could set PRIMARY KEY to (productId, consistsOf, location)
+CREATE TABLE BillofMaterials (
+	productId varchar(25) NOT NULL REFERENCES Products,
+	consistsOf varchar(25) REFERENCES Products,
+	quantity integer NOT NULL,
+	code integer NOT NULL,
+	location varchar(25) NOT NULL,
+	PRIMARY KEY(productId, consistsOf)
+) ;
+
+-- Constraint to prevent a subpart from consisting of itself
+ALTER TABLE BillofMaterials ADD CONSTRAINT CantBeMadeOfItself CHECK (productId <> consistsOf) ;
+
+
+-- Table containing all workcenters and their respective capacities
+-- Assumption: Work Center is idenfied with a varchar as it appears
+--             Figure 3. e.g. Radials, Routers, Sanders, Assembly, Finishing
+CREATE TABLE WorkCenter (
+	WorkCenterName varchar(25) PRIMARY KEY,
+	capacity integer NOT NULL
+) ;
+
+
+-- Table of all routings or operations performed on a products
+-- Assumption: Only products with sub-parts would be found in this table
+--             Could add check constraint to verify whether a productId would
+--             be found in the Bill of Materials before insertion in Routing.
+CREATE TABLE Routing (
+	productId varchar(25) NOT NULL REFERENCES Products,
+	operationNo integer NOT NULL,
+	operationDescription varchar(25) NOT NULL,
+	setupTime time NOT NULL,
+	stdOperationTime time NOT NULL,
+	RWorkcenter varchar(25) REFERENCES WorkCenter NOT NULL,
+	PRIMARY KEY(productId, operationNo)
+) ;
+
+
+-- Table of all Production Orders issued by the Material Manager and assigned to Work Centers
+-- Note: productionOrderId == jobnumber
+CREATE TABLE ProductionOrder (
+	productionOrderId integer PRIMARY KEY,
+	productId varchar(25) REFERENCES Products NOT NULL,
+	quantityOrdered integer NOT NULL,
+	productionOrderDate date NOT NULL,
+	estimatedCompletion date NOT NULL,
+	assignedTo varchar(25) REFERENCES WorkCenter NOT NULL,
+	issuedBy integer REFERENCES Employees NOT NULL,
+	status varchar(25) NOT NULL
+) ;
+
+-- Table of the production status of all manufactured products. Each product made is
+-- uniquely identified by a serial number. The status is tracked throughout manufacturing 
+-- taking into account "queue time", "inspection by an employee", and the department they spend
+-- time in e.g. Rough Mill, Assembly, Finishing, etc
+CREATE TABLE ProductionStatus (
+	serialNumber integer NOT NULL,
+	productionOrderId integer NOT NULL REFERENCES ProductionOrder,
+	atDepartment integer NOT NULL REFERENCES Departments,
+	startDate date NOT NULL,
+	endDate date,
+	inspectedBy integer NOT NULL REFERENCES Employees,
+	PRIMARY KEY(serialNumber, productionOrderId, atDepartment)
+) ;
+
+
+
+/*******************
+WHAT'S NOT INCLUDED?
+*******************/
+
+/* 
+1. Orders specifying the 'average number of items' can be computed from a query crossing the CustomerOrders
+with the OrderedItems tables and using group by and count functions on itemId. 
+This information would be extraneous and redundant to store in a separate column of its own
+
+2. The 'customer year-to-date purchase total' is not included in any relation, as that value
+can be generated from a query from tables: CustomerOrders, OrderedItems, and Products.
+Doing so would be redundant and not guarantee a 1:1 accurate, corresponding values 
+
+3. Similar to 2, 'outstanding balance' can be calculated by crossing CustomerOrders, OrderedItems, Products,
+CustomerCredit to attain the total owed and subtracting that from CustomerPayments. Including this information
+in a separate column would be redundant. With that said, a check/alter table constraint could be included
+to prevent an insertion into the CustomerOrders table with attribute status being = Approved, if there outstanding
+balance exceeds the customer's credit limit.
+
+4. 'Total Bill per item', likewise can be calculated with a sum function in a query from the CustomerBillings x
+CustomerOrders x OrderedItems - CustomerPayment tables and was not included as it is redundant.
+
+5. 'Total amount due' also can be calculated by including an additional table - the customer credit
+to reflect the discount applied to each bill.
+
+*/
